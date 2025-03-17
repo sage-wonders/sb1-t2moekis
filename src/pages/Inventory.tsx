@@ -7,7 +7,7 @@ interface InventoryItem {
   id: string;
   name: string;
   quantity: number;
-  unit: string;
+  unit: string; // Ensure unit is part of the interface
   category: string;
   expirationDate?: string;
   location?: string;
@@ -26,7 +26,7 @@ function ItemModal({ onClose, onSave, initialData, isEdit = false }: ItemModalPr
     initialData || {
       name: '',
       quantity: 0,
-      unit: '',
+      unit: '', // Ensure unit is initialized
       category: '',
       expirationDate: '',
       location: '',
@@ -100,7 +100,7 @@ function ItemModal({ onClose, onSave, initialData, isEdit = false }: ItemModalPr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Unit</label>
+              <label className="block text-sm font-medium text-gray-700">Unit/Weight</label>
               <input
                 type="text"
                 value={formData.unit}
@@ -299,6 +299,7 @@ export function Inventory() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit/Weight</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiration</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -323,7 +324,8 @@ export function Inventory() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-sm rounded-full bg-gray-100">{item.category}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{item.quantity} {item.unit}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{item.unit}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{item.location || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`${
@@ -378,7 +380,10 @@ export function Inventory() {
                 <span className="px-2 py-1 text-sm rounded-full bg-gray-100">{item.category}</span>
               </div>
               <div className="mt-2">
-                <span className="text-sm text-gray-700">Quantity: {item.quantity} {item.unit}</span>
+                <span className="text-sm text-gray-700">Quantity: {item.quantity}</span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm text-gray-700">Unit/Weight: {item.unit}</span>
               </div>
               <div className="mt-2">
                 <span className="text-sm text-gray-700">Location: {item.location || '-'}</span>
