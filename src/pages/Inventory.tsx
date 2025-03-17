@@ -83,9 +83,6 @@ function ItemModal({ onClose, onSave, initialData, isEdit = false }: ItemModalPr
                 <option value="Baking">Baking</option>
                 <option value="Pre-made">Pre-made</option>
                 <option value="Other">Other</option>
-
-
-
               </select>
             </div>
 
@@ -272,7 +269,7 @@ export function Inventory() {
         </button>
       </div>
 
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex gap-4 flex-col md:flex-row">
         <div className="flex-1">
           <input
             type="text"
@@ -295,71 +292,127 @@ export function Inventory() {
       </div>
       
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiration</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredInventory.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    {item.expirationDate && (isExpiringSoon(item.expirationDate) || isExpired(item.expirationDate)) && (
-                      <AlertCircle className={`w-4 h-4 ml-2 ${
-                        isExpired(item.expirationDate) ? 'text-red-500' : 'text-yellow-500'
-                      }`} />
-                    )}
-                  </div>
-                  {item.notes && (
-                    <div className="text-sm text-gray-500">{item.notes}</div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 text-sm rounded-full bg-gray-100">{item.category}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.quantity} {item.unit}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.location || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`${
-                    isExpired(item.expirationDate)
-                      ? 'text-red-600'
-                      : isExpiringSoon(item.expirationDate)
-                      ? 'text-yellow-600'
-                      : 'text-gray-600'
-                  }`}>
-                    {item.expirationDate
-                      ? new Date(item.expirationDate).toLocaleDateString()
-                      : '-'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+        <div className="hidden md:block">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiration</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredInventory.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                      {item.expirationDate && (isExpiringSoon(item.expirationDate) || isExpired(item.expirationDate)) && (
+                        <AlertCircle className={`w-4 h-4 ml-2 ${
+                          isExpired(item.expirationDate) ? 'text-red-500' : 'text-yellow-500'
+                        }`} />
+                      )}
+                    </div>
+                    {item.notes && (
+                      <div className="text-sm text-gray-500">{item.notes}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 text-sm rounded-full bg-gray-100">{item.category}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{item.quantity} {item.unit}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{item.location || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`${
+                      isExpired(item.expirationDate)
+                        ? 'text-red-600'
+                        : isExpiringSoon(item.expirationDate)
+                        ? 'text-yellow-600'
+                        : 'text-gray-600'
+                    }`}>
+                      {item.expirationDate
+                        ? new Date(item.expirationDate).toLocaleDateString()
+                        : '-'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="md:hidden">
+          {filteredInventory.map((item) => (
+            <div key={item.id} className="p-4 border-b">
+              <div className="flex justify-between items-center">
+                <div className="text-lg font-medium text-gray-900">{item.name}</div>
+                {item.expirationDate && (isExpiringSoon(item.expirationDate) || isExpired(item.expirationDate)) && (
+                  <AlertCircle className={`w-4 h-4 ml-2 ${
+                    isExpired(item.expirationDate) ? 'text-red-500' : 'text-yellow-500'
+                  }`} />
+                )}
+              </div>
+              {item.notes && (
+                <div className="text-sm text-gray-500 mt-2">{item.notes}</div>
+              )}
+              <div className="mt-2">
+                <span className="px-2 py-1 text-sm rounded-full bg-gray-100">{item.category}</span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm text-gray-700">Quantity: {item.quantity} {item.unit}</span>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm text-gray-700">Location: {item.location || '-'}</span>
+              </div>
+              <div className="mt-2">
+                <span className={`text-sm ${
+                  isExpired(item.expirationDate)
+                    ? 'text-red-600'
+                    : isExpiringSoon(item.expirationDate)
+                    ? 'text-yellow-600'
+                    : 'text-gray-600'
+                }`}>
+                  Expiration: {item.expirationDate
+                    ? new Date(item.expirationDate).toLocaleDateString()
+                    : '-'}
+                </span>
+              </div>
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => handleEdit(item)}
+                  className="text-blue-600 hover:text-blue-900"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(item)}
+                  className="text-red-600 hover:text-red-900"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {isAddModalOpen && (
