@@ -4,6 +4,30 @@ import { db } from '../lib/firebase';
 import { Plus, Edit, Check, AlertCircle, X, Clock, Users, ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+// Fraction options with labels and decimal values
+const fractionOptions = [
+  { label: '1/8', value: 0.125 },
+  { label: '1/4', value: 0.25 },
+  { label: '1/3', value: 0.333 },
+  { label: '1/2', value: 0.5 },
+  { label: '2/3', value: 0.666 },
+  { label: '3/4', value: 0.75 },
+  { label: '1', value: 1 },
+  { label: '1 1/8', value: 1.125 },
+  { label: '1 1/4', value: 1.25 },
+  { label: '1 1/3', value: 1.333 },
+  { label: '1 1/2', value: 1.5 },
+  { label: '1 2/3', value: 1.666 },
+  { label: '1 3/4', value: 1.75 },
+  { label: '2', value: 2 },
+];
+
+interface Ingredient {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 interface Recipe {
   id: string;
   name: string;
@@ -14,7 +38,7 @@ interface Recipe {
   prepTime: string;
   cookTime: string;
   servings: number;
-  ingredients: string[];
+  ingredients: Ingredient[];
   instructions: string[];
 }
 
@@ -38,6 +62,16 @@ interface RecipeFormProps {
   isEdit?: boolean;
 }
 
+// Function to convert decimals to fractions for display
+const decimalToFraction = (decimal: number): string => {
+  for (const option of fractionOptions) {
+    if (Math.abs(decimal - option.value) < 0.01) {
+      return option.label;
+    }
+  }
+  return decimal.toString(); // Fallback to decimal if no matching fraction is found
+};
+
 function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeFormProps) {
   const [formData, setFormData] = useState<Partial<Recipe>>(
     initialData || {
@@ -49,14 +83,23 @@ function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeForm
       prepTime: '',
       cookTime: '',
       servings: 4,
-      ingredients: [''],
+      ingredients: [{ name: '', quantity: 1, unit: 'cups' }],
       instructions: ['']
     }
   );
 
-  const handleIngredientChange = (index: number, value: string) => {
+  const handleIngredientChange = (index: number, field: keyof Ingredient, value: string | number) => {
     const newIngredients = [...(formData.ingredients || [])];
-    newIngredients[index] = value;
+    newIngredients[index] = { ...newIngredients[index], [field]: value };
+    setFormData({ ...formData, ingredients: newIngredients });
+  };
+
+  const addIngredient = () => {
+    setFormData({ ...formData, ingredients: [...(formData.ingredients || []), { name: '', quantity: 1, unit: 'cups' }] });
+  };
+
+  const removeIngredient = (index: number) => {
+    const newIngredients = formData.ingredients?.filter((_, i) => i !== index);
     setFormData({ ...formData, ingredients: newIngredients });
   };
 
@@ -66,17 +109,8 @@ function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeForm
     setFormData({ ...formData, instructions: newInstructions });
   };
 
-  const addIngredient = () => {
-    setFormData({ ...formData, ingredients: [...(formData.ingredients || []), ''] });
-  };
-
   const addInstruction = () => {
     setFormData({ ...formData, instructions: [...(formData.instructions || []), ''] });
-  };
-
-  const removeIngredient = (index: number) => {
-    const newIngredients = formData.ingredients?.filter((_, i) => i !== index);
-    setFormData({ ...formData, ingredients: newIngredients });
   };
 
   const removeInstruction = (index: number) => {
@@ -119,7 +153,6 @@ function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeForm
                 value={formData.image}
                 onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                required
               />
             </div>
 
@@ -198,12 +231,47 @@ function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeForm
             <div className="space-y-2">
               {formData.ingredients?.map((ingredient, index) => (
                 <div key={index} className="flex gap-2">
+                  {['cups', 'teaspoon', 'tablespoon'].includes(ingredient.unit) ? (
+                    <select
+                      value={ingredient.quantity}
+                      onChange={(e) => handleIngredientChange(index, 'quantity', parseFloat(e.target.value))}
+                      className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      {fractionOptions.map((option) => (
+                        <option key={option.label} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      value={ingredient.quantity}
+                      onChange={(e) => handleIngredientChange(index, 'quantity', parseFloat(e.target.value))}
+                      className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      min="0"
+                      step="0.1"
+                      required
+                    />
+                  )}
+                  <select
+                    value={ingredient.unit}
+                    onChange={(e) => handleIngredientChange(index, 'unit', e.target.value)}
+                    className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="cups">cups</option>
+                    <option value="teaspoon">teaspoon</option>
+                    <option value="tablespoon">tablespoon</option>
+                    <option value="oz">oz</option>
+                    <option value="lbs">lbs</option>
+                    <option value="count">count</option>
+                  </select>
                   <input
                     type="text"
-                    value={ingredient}
-                    onChange={(e) => handleIngredientChange(index, e.target.value)}
+                    value={ingredient.name}
+                    onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
                     className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="e.g., 2 cups flour"
+                    placeholder="e.g., flour"
                     required
                   />
                   <button
@@ -275,9 +343,10 @@ function RecipeForm({ onClose, onSave, initialData, isEdit = false }: RecipeForm
 
 function RecipeModal({ recipe, onClose, inventory }: RecipeModalProps) {
   const checkIngredientInStock = (ingredient: string): boolean => {
+    if (!ingredient) return false; // Check if ingredient is undefined or null
     const ingredientLower = ingredient.toLowerCase();
     return inventory.some(item => 
-      item.name.toLowerCase().includes(ingredientLower)
+      item?.name?.toLowerCase().includes(ingredientLower) // Check if item and item.name are defined
     );
   };
 
@@ -322,13 +391,16 @@ function RecipeModal({ recipe, onClose, inventory }: RecipeModalProps) {
                   key={index}
                   className="flex items-center gap-2 text-sm"
                 >
-                  {checkIngredientInStock(ingredient) ? (
+                  {checkIngredientInStock(ingredient.name) ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
                     <AlertCircle className="w-4 h-4 text-red-500" />
                   )}
-                  <span className={checkIngredientInStock(ingredient) ? 'text-gray-700' : 'text-gray-500'}>
-                    {ingredient}
+                  <span className={checkIngredientInStock(ingredient.name) ? 'text-gray-700' : 'text-gray-500'}>
+                    {['cups', 'teaspoon', 'tablespoon'].includes(ingredient.unit)
+                      ? decimalToFraction(ingredient.quantity)
+                      : ingredient.quantity}{' '}
+                    {ingredient.unit} {ingredient.name}
                   </span>
                 </li>
               ))}
@@ -373,6 +445,8 @@ export function Recipes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showOnlyInStock, setShowOnlyInStock] = useState(false);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
+  const [currentList, setCurrentList] = useState<ShoppingList | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -415,19 +489,58 @@ export function Recipes() {
       }
     };
 
+    const fetchShoppingLists = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'shoppingLists'));
+        const lists = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ShoppingList));
+        setShoppingLists(lists);
+        if (lists.length > 0) {
+          setCurrentList(lists[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching shopping lists:', error);
+      }
+    };
+
     fetchRecipes();
     fetchInventory();
+    fetchShoppingLists();
   }, [location.state?.selectedRecipeId]);
 
   const checkIngredientInStock = (ingredient: string): boolean => {
+    if (!ingredient) return false; // Check if ingredient is undefined or null
     const ingredientLower = ingredient.toLowerCase();
     return inventory.some(item => 
-      item.name.toLowerCase().includes(ingredientLower)
+      item?.name?.toLowerCase().includes(ingredientLower) // Check if item and item.name are defined
     );
   };
 
   const hasAllIngredientsInStock = (recipe: Recipe): boolean => {
-    return recipe.ingredients.every(ingredient => checkIngredientInStock(ingredient));
+    if (!recipe.ingredients) return false; // Check if ingredients array is defined
+    return recipe.ingredients.every(ingredient => 
+      ingredient?.name && checkIngredientInStock(ingredient.name) // Check if ingredient.name is defined
+    );
+  };
+
+  const handleAddMissingIngredients = async (recipe: Recipe) => {
+    if (!currentList) return;
+    const missingIngredients = recipe.ingredients.filter(ingredient => !checkIngredientInStock(ingredient.name));
+    try {
+      for (const ingredient of missingIngredients) {
+        await addDoc(collection(db, 'shoppingLists', currentList.id, 'items'), {
+          name: ingredient.name,
+          category: 'Ingredients',
+          completed: false,
+          products: []
+        });
+      }
+      alert('Missing ingredients added to the shopping list!');
+    } catch (error) {
+      console.error('Error adding missing ingredients:', error);
+    }
   };
 
   const filteredRecipes = recipes.filter(recipe => {
@@ -436,7 +549,7 @@ export function Recipes() {
       recipe.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       recipe.cuisine.toLowerCase().includes(searchTerm.toLowerCase()) ||
       recipe.ingredients.some(ingredient => 
-        ingredient.toLowerCase().includes(searchTerm.toLowerCase())
+        ingredient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) // Check if ingredient.name is defined
       );
     
     const matchesCategory = !categoryFilter || recipe.category === categoryFilter;
@@ -465,7 +578,7 @@ export function Recipes() {
 
   const handleAddToMenu = (recipe: Recipe, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/menu', { state: { selectedRecipe: recipe } });
+    handleAddMissingIngredients(recipe);
   };
 
   const handleSaveNew = async (newRecipe: Omit<Recipe, 'id'>) => {
@@ -572,7 +685,7 @@ export function Recipes() {
                   <button
                     onClick={(e) => handleAddToMenu(recipe, e)}
                     className="p-1 text-blue-500 hover:text-blue-700"
-                    title="Add to Menu"
+                    title="Add Missing Ingredients to Shopping List"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -611,13 +724,16 @@ export function Recipes() {
                         key={index}
                         className="flex items-center gap-2 text-sm"
                       >
-                        {checkIngredientInStock(ingredient) ? (
+                        {ingredient?.name && checkIngredientInStock(ingredient.name) ? ( // Check if ingredient.name is defined
                           <Check className="w-4 h-4 text-green-500" />
                         ) : (
                           <AlertCircle className="w-4 h-4 text-red-500" />
                         )}
-                        <span className={checkIngredientInStock(ingredient) ? 'text-gray-700' : 'text-gray-500'}>
-                          {ingredient}
+                        <span className={ingredient?.name && checkIngredientInStock(ingredient.name) ? 'text-gray-700' : 'text-gray-500'}>
+                          {['cups', 'teaspoon', 'tablespoon'].includes(ingredient.unit)
+                            ? decimalToFraction(ingredient.quantity)
+                            : ingredient.quantity}{' '}
+                          {ingredient.unit} {ingredient.name}
                         </span>
                       </li>
                     ))}
