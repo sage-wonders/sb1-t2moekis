@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Plus, Edit, X, ExternalLink } from 'lucide-react';
+import { Plus, Edit, X, ExternalLink, ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 interface ProductVariant {
   id: string;
@@ -20,6 +20,12 @@ interface ShoppingItem {
   category: string;
   completed: boolean;
   products: ProductVariant[];
+}
+
+interface ShoppingList {
+  id: string;
+  name: string;
+  items: ShoppingItem[];
 }
 
 interface AddModalProps {
@@ -409,41 +415,68 @@ function EditItemModal({ item, onClose, onSave }: EditModalProps) {
 }
 
 export function ShoppingList() {
-  const [items, setItems] = useState<ShoppingItem[]>([]);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
+  const [currentList, setCurrentList] = useState<ShoppingList | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null);
+  const [isListDropdownOpen, setIsListDropdownOpen] = useState(false);
+  const [items, setItems] = useState<ShoppingItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [showVariants, setShowVariants] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    const fetchShoppingList = async () => {
+    const fetchShoppingLists = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'shopping'));
-        const shoppingItems = querySnapshot.docs.map(doc => ({
+        const querySnapshot = await getDocs(collection(db, 'shoppingLists'));
+        const lists = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        } as ShoppingItem));
-        setItems(shoppingItems);
+        } as ShoppingList));
+        setShoppingLists(lists);
+        if (lists.length > 0) {
+          setCurrentList(lists[0]);
+          fetchItems(lists[0].id);
+        }
       } catch (error) {
-        console.error('Error fetching shopping list:', error);
+        console.error('Error fetching shopping lists:', error);
       }
     };
 
-    fetchShoppingList();
+    const fetchItems = async (listId: string) => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'shoppingLists', listId, 'items'));
+        const itemsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ShoppingItem));
+        setItems(itemsData.sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
+      } catch (error) {
+        console.error('Error fetching items:', error);
+      }
+    };
+
+    fetchShoppingLists();
   }, []);
 
-  const handleAdd = () => {
-    setIsAddModalOpen(true);
-  };
-
-  const handleEdit = (item: ShoppingItem) => {
-    setSelectedItem(item);
-    setIsEditModalOpen(true);
-  };
-
-  const handleSaveNew = async (newItem: Omit<ShoppingItem, 'id'>) => {
+  const handleAddList = async (listName: string) => {
     try {
-      const docRef = await addDoc(collection(db, 'shopping'), newItem);
-      setItems([...items, { ...newItem, id: docRef.id }]);
+      const newList = { name: listName, items: [] };
+      const docRef = await addDoc(collection(db, 'shoppingLists'), newList);
+      const newListWithId = { ...newList, id: docRef.id };
+      setShoppingLists([...shoppingLists, newListWithId]);
+      setCurrentList(newListWithId);
+    } catch (error) {
+      console.error('Error adding shopping list:', error);
+    }
+  };
+
+  const handleAddItem = async (newItem: Omit<ShoppingItem, 'id'>) => {
+    if (!currentList) return;
+    try {
+      const docRef = await addDoc(collection(db, 'shoppingLists', currentList.id, 'items'), newItem);
+      const newItemWithId = { ...newItem, id: docRef.id };
+      setItems([...items, newItemWithId].sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Error adding shopping item:', error);
@@ -451,9 +484,10 @@ export function ShoppingList() {
   };
 
   const handleSaveEdit = async (editedItem: ShoppingItem) => {
+    if (!currentList) return;
     try {
-      await updateDoc(doc(db, 'shopping', editedItem.id), editedItem);
-      setItems(items.map(item => item.id === editedItem.id ? editedItem : item));
+      await updateDoc(doc(db, 'shoppingLists', currentList.id, 'items', editedItem.id), editedItem);
+      setItems(items.map(item => item.id === editedItem.id ? editedItem : item).sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
       setIsEditModalOpen(false);
       setSelectedItem(null);
     } catch (error) {
@@ -462,12 +496,51 @@ export function ShoppingList() {
   };
 
   const toggleComplete = async (item: ShoppingItem) => {
+    if (!currentList) return;
     try {
       const updatedItem = { ...item, completed: !item.completed };
-      await updateDoc(doc(db, 'shopping', item.id), { completed: !item.completed });
-      setItems(items.map(i => i.id === item.id ? updatedItem : i));
+      await updateDoc(doc(db, 'shoppingLists', currentList.id, 'items', item.id), { completed: !item.completed });
+      setItems(items.map(i => i.id === item.id ? updatedItem : i).sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
     } catch (error) {
       console.error('Error toggling item completion:', error);
+    }
+  };
+
+  const toggleVariantVisibility = (itemId: string) => {
+    setShowVariants(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
+  const handleSelectItem = (itemId: string) => {
+    setSelectedItems(prev =>
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!currentList || selectedItems.length === 0) return;
+    try {
+      for (const itemId of selectedItems) {
+        await deleteDoc(doc(db, 'shoppingLists', currentList.id, 'items', itemId));
+      }
+      setItems(items.filter(item => !selectedItems.includes(item.id)).sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
+      setSelectedItems([]);
+    } catch (error) {
+      console.error('Error deleting selected items:', error);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!currentList) return;
+    try {
+      await deleteDoc(doc(db, 'shoppingLists', currentList.id, 'items', itemId));
+      setItems(items.filter(item => item.id !== itemId).sort((a, b) => a.name.localeCompare(b.name))); // Sort items alphabetically
+    } catch (error) {
+      console.error('Error deleting item:', error);
     }
   };
 
@@ -475,21 +548,76 @@ export function ShoppingList() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Shopping List</h1>
+        <div className="relative">
+          <button
+            onClick={() => setIsListDropdownOpen(!isListDropdownOpen)}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            {currentList ? currentList.name : 'Select List'}
+            {isListDropdownOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
+          {isListDropdownOpen && (
+            <div className="absolute mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
+              {shoppingLists.map(list => (
+                <div
+                  key={list.id}
+                  onClick={() => {
+                    setCurrentList(list);
+                    setIsListDropdownOpen(false);
+                    fetchItems(list.id);
+                  }}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  {list.name}
+                </div>
+              ))}
+              <div
+                onClick={() => {
+                  const listName = prompt('Enter new list name');
+                  if (listName) {
+                    handleAddList(listName);
+                  }
+                }}
+                className="p-2 hover:bg-gray-100 cursor-pointer"
+              >
+                + New List
+              </div>
+            </div>
+          )}
+        </div>
         <button
-          onClick={handleAdd}
+          onClick={() => setIsAddModalOpen(true)}
           className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Add Item
         </button>
       </div>
-      
+
+      {selectedItems.length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={handleDeleteSelected}
+            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+          >
+            <Trash className="w-5 h-5" />
+            Delete Selected
+          </button>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow p-6">
         <div className="space-y-4">
           {items.map((item) => (
             <div key={item.id} className="border rounded-lg overflow-hidden">
               <div className="flex items-center justify-between p-4 bg-gray-50">
                 <div className="flex items-center space-x-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item.id)}
+                    onChange={() => handleSelectItem(item.id)}
+                    className="h-5 w-5 text-blue-600"
+                  />
                   <input
                     type="checkbox"
                     checked={item.completed}
@@ -501,15 +629,32 @@ export function ShoppingList() {
                   </span>
                   <span className="text-sm text-gray-500">{item.category}</span>
                 </div>
-                <button
-                  onClick={() => handleEdit(item)}
-                  className="text-blue-600 hover:text-blue-900"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleVariantVisibility(item.id)}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    {showVariants[item.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setIsEditModalOpen(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteItem(item.id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               
-              {item.products && item.products.length > 0 && (
+              {showVariants[item.id] && item.products && item.products.length > 0 && (
                 <div className="p-4 space-y-2">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Product Options:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -547,7 +692,7 @@ export function ShoppingList() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
           <AddItemModal
             onClose={() => setIsAddModalOpen(false)}
-            onSave={handleSaveNew}
+            onSave={handleAddItem}
           />
         </div>
       )}
